@@ -1,56 +1,47 @@
-# Variable Latency 32-bit Iterative Multiplier
+# Variable Latency Iterative Multiplier
 
-This repository contains a 32-bit iterative integer multiplier that handles both signed and unsigned two's complement numbers using a shift-and-add algorithm. The design improves upon standard fixed-latency iterative multipliers by skipping continuous chains of zeros during computation.
+A 32-bit signed iterative multiplier in Verilog. It uses shift-and-add, but instead of consuming one multiplier bit per cycle, it skips runs of zeros. The latency therefore depends on the multiplier operand, and the multiplication stops as soon as the remaining bits are zero.
 
-## Interface Protocol (val/rdy)
+Signed inputs are converted to magnitudes before the core runs, and the sign is applied to the result at the end. The output is the low 32 bits of the product.
 
-The module encapsulates its variable execution time using a latency-insensitive `val/rdy` (valid/ready) stream interface. 
-*   **Encapsulation:** The internal cycle latency is completely hidden from the external system to maintain a clean boundary.
-*   **Handshake:** The multiplier only accepts 64-bit input operands when `istream_rdy` is high and asserts `ostream_val` only when the final 32-bit product is ready.
+## Valid/Ready Interface
 
-### val/rdy Interface
-<div align="center">
-  <img src="docs/valrdy_Interface.png" alt="val/rdy Interface">
-</div>
+Because the latency varies, the multiplier uses a valid/ready handshake on both sides.
 
-## The Sparse Counter Optimization
+- **Input:** `istream_msg` carries `{a, b}` as 64 bits. An operand is accepted when `istream_val` and `istream_rdy` are both high.
+- **Output:** `ostream_msg` carries the 32-bit product. It is held until `ostream_val` and `ostream_rdy` are both high.
 
-The baseline architectural reference uses a fixed ~35 cycle execution path. This implementation reduces total clock cycles using a custom Sparse Counter (`sparse_counter.v`).
-*   The counter uses combinational logic to dynamically inspect the multiplier register (`b_reg`) and locate the bit position of the next `1`.
-*   Instead of shifting by a single bit per cycle, the datapath shifts both the multiplicand and multiplier by the calculated `sparse_count` simultaneously.
-*   This allows the execution state to skip long sequences of `0`s in a single clock cycle, dynamically adapting the latency based on the structure of the input operands.
+The surrounding logic never needs to know how many cycles a multiplication takes.
 
-## Microarchitecture Breakdown
+## FSM
 
-The design is partitioned into a strict datapath and control unit, wrapped in a top-level module.
+The control unit has three states.
 
-*   **`imul_main.v` (Top Wrapper):** Manages two's complement signed arithmetic. It records the signs of the 64-bit input stream, converts both operands to positive magnitudes for the core datapath to process, and reapplies the correct sign to the final 32-bit output.
-*   **`data_path.v`:** Contains the accumulator (`r_reg`), multiplicand register (`a_reg`), and multiplier register (`b_reg`). It applies dynamic shifts (`<< sparse_count` and `>> sparse_count`) and routes the partial sum back to the accumulator.
-*   **`control_unit.v`:** A Mealy Finite State Machine (FSM) that drives multiplexer selects and register enables. It cycles through IDLE (`s1`), LOAD (`s0`), CALC (`s2`), and DONE (`s3`) states based on the `val/rdy` handshake and the execution counter.
+| State | Name | Behavior |
+| ----- | ---- | -------- |
+| `s1`  | Idle | Wait for `istream_val`, then load `a` and `b` |
+| `s2`  | Calc | Add `a` to the result when `b[0]` is set, then shift `b` right and `a` left by `sparse_count`. Exit when `b` is zero or 32 positions are consumed |
+| `s3`  | Done | Present the product, return to idle once `ostream_rdy` is high |
 
-### Control Unit FSM
-<div align="center">
-  <img src="./docs/FSM_Diagram.png" width="400" alt="FSM Diagram">
-</div>
+`sparse_counter.v` provides `sparse_count`, the index of the lowest set bit in `b` (minimum 1). The `sparse_on` parameter in `control_unit.v` turns skipping off for a plain one-bit-per-cycle multiplier.
 
-<br>
+## Files
 
-### Datapath Architecture
-<div align="center">
-  <img src="./docs/Datapath_Diagram.png" width="550" alt="Datapath Diagram">
-</div>
+```
+imul_main.v        top level, signed handling
+control_unit.v     FSM and handshake
+datapath.v         registers, shifters, adder
+sparse_counter.v   finds the next set bit of b
+testbench.v        self-checking testbench
+```
 
-## Simulation & Debugging
+## Simulation
 
-The module is simulated using **Icarus Verilog** and debugged with **GTKWave**. 
+Requires [Icarus Verilog](https://github.com/steveicarus/iverilog).
 
-A self-checking testbench (`testbench.v`) is included to verify the datapath. It covers standard operations, zero multiplication, and signed bounds (e.g., negative by negative), outputting simple PASS/FAIL logs directly to the console.
+```
+iverilog -g2012 -o sim testbench.v imul_main.v control_unit.v datapath.v sparse_counter.v
+vvp sim
+```
 
-## Repository Structure
-
-*   **`docs/`**: Architecture reference diagrams and resources.
-*   **`imul_main.v`**: Top-level wrapper managing signed operations.
-*   **`control_unit.v`**: FSM for datapath routing and handshaking.
-*   **`data_path.v`**: Core shift-and-add datapath logic.
-*   **`sparse_counter.v`**: Combinational zero-skipping logic.
-*   **`testbench.v`**: Self-checking Verilog simulation environment.
+The testbench runs directed cases and prints `pass` or `FAIL` for each, then `ALL PASSED` at the end.
