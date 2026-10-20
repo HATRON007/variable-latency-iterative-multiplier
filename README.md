@@ -28,7 +28,7 @@ The control unit has three states.
 ## Repository Structure
 
 ```
-docs/              reference images
+docs/              reference images, resources
 imul_main.v        top level, signed handling
 control_unit.v     FSM and handshake
 datapath.v         registers, shifters, adder
