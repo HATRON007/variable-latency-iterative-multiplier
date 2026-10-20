@@ -28,11 +28,13 @@ The control unit has three states.
 ## Repository Structure
 
 ```
+docs/              reference images
 imul_main.v        top level, signed handling
 control_unit.v     FSM and handshake
 datapath.v         registers, shifters, adder
 sparse_counter.v   finds the next set bit of b
 testbench.v        self-checking testbench
+README.md
 ```
 
 ## Simulation
