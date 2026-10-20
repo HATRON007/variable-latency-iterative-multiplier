@@ -20,10 +20,10 @@ The control unit has three states.
 | State | Name | Behavior |
 | ----- | ---- | -------- |
 | `s1`  | Idle | Wait for `istream_val`, then load `a` and `b` |
-| `s2`  | Calc | Add `a` to the result when `b[0]` is set, then shift `b` right and `a` left by `sparse_count`. Exit when `b` is zero or 32 positions are consumed |
+| `s2`  | Calc | If `b[0]` is set, add `a` to the result. Shift `b` right and `a` left by `sparse_count` |
 | `s3`  | Done | Present the product, return to idle once `ostream_rdy` is high |
 
-`sparse_counter.v` provides `sparse_count`, the index of the lowest set bit in `b` (minimum 1). The `sparse_on` parameter in `control_unit.v` turns skipping off for a plain one-bit-per-cycle multiplier.
+The calculation ends when `b` becomes zero or 32 bit positions have been consumed. `sparse_counter.v` provides `sparse_count`, the index of the lowest set bit in `b` (minimum 1). The `sparse_on` parameter in `control_unit.v` turns skipping off for a plain one-bit-per-cycle multiplier.
 
 ## Repository Structure
 
