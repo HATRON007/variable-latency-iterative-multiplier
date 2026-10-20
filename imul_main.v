@@ -51,7 +51,7 @@ module imul_main(
         .b_reg(b_reg)
     );
 
-    data_path data (
+    datapath data (
         .clk(clk),
         .rst(rst),
         .istream_msg(istream_msg_mod),

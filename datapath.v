@@ -1,4 +1,4 @@
-module data_path(
+module datapath(
     input wire [63 : 0] istream_msg, //input stream message
     input wire [4 : 0] sparse_count,
     input clk,

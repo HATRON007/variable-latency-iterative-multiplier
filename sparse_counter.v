@@ -9,6 +9,7 @@ module sparse_counter(
     always @(*) begin
         if(rst) begin
             sparse_count = 5'd0;
+            stop = 1;
         end
         else begin
             stop = 1;
