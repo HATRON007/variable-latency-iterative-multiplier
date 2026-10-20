@@ -25,7 +25,7 @@ The control unit has three states.
 
 `sparse_counter.v` provides `sparse_count`, the index of the lowest set bit in `b` (minimum 1). The `sparse_on` parameter in `control_unit.v` turns skipping off for a plain one-bit-per-cycle multiplier.
 
-## Files
+## Repository Structure
 
 ```
 imul_main.v        top level, signed handling
